@@ -30,35 +30,17 @@
             animation: gradient-animation 15s ease infinite;
         }
 
-        /* Animación de Carga estilo Gemini */
-        .gemini-loader {
-            width: 28px;
-            height: 28px;
-            position: relative;
-            animation: rotate 2s linear infinite;
+        /* Cursor parpadeante para efecto de escritura */
+        @keyframes blink {
+            50% { opacity: 0; }
         }
-        .gemini-loader .sparkle {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 12px;
-            height: 12px;
-            background: #4f46e5;
-            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
-        }
-        .gemini-loader .arc {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            border: 3px solid transparent;
-            border-top-color: #f59e0b;
-            border-right-color: #ef4444;
-            transform: rotate(45deg);
-        }
-        @keyframes rotate {
-            100% { transform: rotate(360deg); }
+        .blinking-cursor {
+            display: inline-block;
+            width: 3px;
+            height: 1.2em;
+            background-color: #3b82f6;
+            animation: blink 1s step-end infinite;
+            vertical-align: bottom;
         }
     </style>
 </head>
@@ -120,7 +102,21 @@
 
             <div class="p-4 sm:p-6 bg-transparent">
                  <div id="status-indicator" class="text-gray-500 text-sm h-5 mb-2 text-center"></div>
-                 <div class="flex items-center gap-2 bg-gray-200/50 rounded-2xl p-2">
+                 <div class="flex items-center gap-2 bg-gray-200/50 rounded-2xl p-2 relative">
+                    <div id="attach-menu" class="absolute bottom-full left-0 mb-2 bg-white rounded-lg shadow-lg border hidden">
+                        <label class="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                            Subir Archivo
+                            <input type="file" id="file-upload-input" class="hidden">
+                        </label>
+                        <button id="analyze-image-menu-button" class="flex items-center gap-2 p-2 hover:bg-gray-100 w-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                            Analizar Imagen
+                        </button>
+                    </div>
+                    <button id="attach-button" class="p-2 text-gray-600 hover:bg-gray-200 rounded-full transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                    </button>
                     <input type="text" id="chat-input" placeholder="Escribe una pregunta..." class="flex-grow bg-transparent p-2 focus:outline-none">
                     <button id="send-chat-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold p-2 rounded-full">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
@@ -154,6 +150,10 @@
         const newChatButton = document.getElementById('new-chat-button');
         const menuToggle = document.getElementById('menu-toggle');
         const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+        const attachButton = document.getElementById('attach-button');
+        const attachMenu = document.getElementById('attach-menu');
+        const fileUploadInput = document.getElementById('file-upload-input');
+        const analyzeImageMenuButton = document.getElementById('analyze-image-menu-button');
         
         // --- APP STATE ---
         let app, auth, db, userId;
@@ -427,6 +427,30 @@
         sidebarBackdrop.addEventListener('click', () => {
             historySidebar.classList.add('-translate-x-full');
             sidebarBackdrop.classList.add('hidden');
+        });
+
+        attachButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            attachMenu.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', () => {
+            if (!attachMenu.classList.contains('hidden')) {
+                attachMenu.classList.add('hidden');
+            }
+        });
+
+        fileUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                appendMessage(`Archivo subido: ${file.name}`, 'user');
+            }
+            attachMenu.classList.add('hidden');
+        });
+
+        analyzeImageMenuButton.addEventListener('click', () => {
+            // Lógica para abrir el modal de análisis de imagen
+            attachMenu.classList.add('hidden');
         });
 
         // --- INICIALIZACIÓN ---
