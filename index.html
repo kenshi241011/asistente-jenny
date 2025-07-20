@@ -6,6 +6,9 @@
     <title>Asistente IA: Jenny</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Librerías para leer archivos .docx y .xlsx -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
         #chat-history { scroll-behavior: smooth; }
@@ -72,9 +75,9 @@
             </div>
             <h1 class="text-4xl font-bold mb-2">Bienvenido a Jenny</h1>
             <p class="text-gray-600 mb-8">Tu asistente personal con historial de chat.</p>
-            <button id="login-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 mx-auto w-full justify-center">
+            <button id="login-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 mx-auto w-full justify-center disabled:opacity-75 disabled:cursor-wait">
                 <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.222,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.99,36.566,44,30.836,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
-                Iniciar Sesión con Google
+                <span id="login-button-text">Iniciar Sesión con Google</span>
             </button>
             <p id="login-error" class="text-red-500 mt-4"></p>
         </div>
@@ -120,13 +123,48 @@
 
             <div class="p-4 sm:p-6 bg-transparent">
                  <div id="status-indicator" class="text-gray-500 text-sm h-5 mb-2 text-center"></div>
-                 <div class="flex items-center gap-2 bg-gray-200/50 rounded-2xl p-2">
+                 <div class="flex items-center gap-2 bg-gray-200/50 rounded-2xl p-2 relative">
+                    <div id="attach-menu" class="absolute bottom-full left-0 mb-2 bg-white rounded-lg shadow-lg border hidden w-48">
+                        <label class="flex items-center gap-3 p-3 hover:bg-gray-100 cursor-pointer text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                            Subir Archivo
+                            <input type="file" id="file-upload-input" class="hidden">
+                        </label>
+                        <button id="analyze-image-menu-button" class="flex items-center gap-3 p-3 hover:bg-gray-100 w-full text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                            Analizar Imagen
+                        </button>
+                    </div>
+                    <button id="attach-button" class="p-2 text-gray-600 hover:bg-gray-200 rounded-full transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                    </button>
                     <input type="text" id="chat-input" placeholder="Escribe una pregunta..." class="flex-grow bg-transparent p-2 focus:outline-none">
                     <button id="send-chat-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold p-2 rounded-full">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal de Análisis de Imagen -->
+    <div id="image-analysis-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white p-6 rounded-xl shadow-lg max-w-lg w-full">
+            <h2 class="text-2xl font-semibold mb-4 text-center">Analiza una Imagen</h2>
+            <div id="image-container" class="relative bg-gray-900 rounded-lg overflow-hidden mb-4 min-h-[250px] flex items-center justify-center">
+                <video id="camera-stream" autoplay playsinline class="w-full h-auto rounded-lg"></video>
+                <img id="image-preview" class="hidden w-full h-auto rounded-lg" alt="Vista previa de la imagen">
+                <canvas id="capture-canvas" class="hidden"></canvas>
+            </div>
+            <div id="image-controls" class="grid grid-cols-2 gap-2 mb-4">
+                 <button id="capture-button" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg">Tomar Foto</button>
+                 <label for="image-upload-input" class="cursor-pointer text-center w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Subir Imagen</label>
+                 <input type="file" id="image-upload-input" class="hidden" accept="image/*">
+            </div>
+            <button id="analyze-image-button" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:bg-purple-300" disabled>
+                ✨ Analizar y Enviar al Chat
+            </button>
+            <button id="close-modal-button" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg mt-2">Cancelar</button>
         </div>
     </div>
 
@@ -139,6 +177,7 @@
         const loginScreen = document.getElementById('login-screen');
         const appScreen = document.getElementById('app-screen');
         const loginButton = document.getElementById('login-button');
+        const loginButtonText = document.getElementById('login-button-text');
         const logoutButton = document.getElementById('logout-button');
         const userName = document.getElementById('user-name');
         const userPhoto = document.getElementById('user-photo');
@@ -154,12 +193,25 @@
         const newChatButton = document.getElementById('new-chat-button');
         const menuToggle = document.getElementById('menu-toggle');
         const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+        const attachButton = document.getElementById('attach-button');
+        const attachMenu = document.getElementById('attach-menu');
+        const fileUploadInput = document.getElementById('file-upload-input');
+        const analyzeImageMenuButton = document.getElementById('analyze-image-menu-button');
+        const imageAnalysisModal = document.getElementById('image-analysis-modal');
+        const closeModalButton = document.getElementById('close-modal-button');
+        const video = document.getElementById('camera-stream');
+        const canvas = document.getElementById('capture-canvas');
+        const imagePreview = document.getElementById('image-preview');
+        const captureButton = document.getElementById('capture-button');
+        const imageUploadInput = document.getElementById('image-upload-input');
+        const analyzeImageButton = document.getElementById('analyze-image-button');
         
         // --- APP STATE ---
         let app, auth, db, userId;
         let unsubscribeConversations = null;
         let currentConversationId = null;
         let chatContext = [];
+        let currentImageB64 = null;
         
         const API_KEY = "AIzaSyB1xjT_S_pPECCQZ50VDDb3vRbQBa_EHpk";
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-jenny-app';
@@ -176,7 +228,7 @@
         };
 
         // --- AUTH LOGIC ---
-        function setupAuth() {
+        function initializeFirebase() {
             try {
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
@@ -201,22 +253,35 @@
                     }
                 });
             } catch (error) {
-                loginError.textContent = "Error al inicializar Firebase.";
+                console.error("Error al inicializar Firebase:", error);
+                loginError.textContent = "Error crítico al inicializar Firebase.";
+                loginButton.disabled = true;
             }
         }
         
         async function signInWithGoogle() {
             if (!auth) {
-                loginError.textContent = "Firebase no está inicializado.";
+                loginError.textContent = "Firebase no está listo. Intenta de nuevo en un momento.";
                 return;
             }
+            loginButton.disabled = true;
+            loginButtonText.textContent = "Conectando...";
+            loginError.textContent = "";
+
             const provider = new GoogleAuthProvider();
             try {
                 await setPersistence(auth, browserLocalPersistence);
                 await signInWithPopup(auth, provider);
             } catch (error) {
                 console.error("Error al iniciar sesión con Google:", error);
-                loginError.textContent = "Error al iniciar sesión. Revisa los dominios autorizados en Firebase.";
+                if (error.code === 'auth/unauthorized-domain') {
+                    loginError.textContent = "Dominio no autorizado. Revisa la configuración de Firebase.";
+                } else {
+                    loginError.textContent = "Error al iniciar sesión. Inténtalo de nuevo.";
+                }
+            } finally {
+                loginButton.disabled = false;
+                loginButtonText.textContent = "Iniciar Sesión con Google";
             }
         }
 
@@ -255,7 +320,7 @@
                     chatContext = doc.data().messages || [];
                     if (chatContext.length > 0) {
                         welcomeScreen.classList.add('hidden');
-                        chatContext.forEach(msg => appendMessage(msg.parts[0].text, msg.role, false, false));
+                        chatContext.forEach(msg => appendMessage(msg.parts[0].text, msg.role, msg.isImage || false, false));
                     } else {
                         welcomeScreen.classList.remove('hidden');
                     }
@@ -270,12 +335,14 @@
             welcomeScreen.classList.remove('hidden');
         }
 
-        async function handleChat() {
-            const userPrompt = chatInput.value.trim();
+        async function handleChat(promptOverride = null, isFileContext = false) {
+            const userPrompt = promptOverride || chatInput.value.trim();
             if (!userPrompt) return;
 
             setChatUIState(true);
-            appendMessage(userPrompt, 'user');
+            if (!isFileContext) {
+                appendMessage(userPrompt, 'user');
+            }
             const aiMessageBubble = appendMessage('', 'model', false, false);
             chatInput.value = '';
 
@@ -292,7 +359,8 @@
                 }
                 
                 const currentTurn = { role: "user", parts: [{ text: userPrompt }] };
-                const tempContext = [...chatContext, currentTurn];
+                const tempContext = chatContext.map(({role, parts}) => ({role, parts})); // Limpiar isImage
+                tempContext.push(currentTurn);
                 
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
                 const payload = { contents: tempContext };
@@ -373,7 +441,13 @@
             
             messageBubble.className = `prose max-w-lg ${role === 'user' ? 'bg-gray-100 p-3 rounded-xl' : 'bg-white'}`;
             
-            if (role === 'model' && !text) {
+            if (isImage) {
+                const img = document.createElement('img');
+                img.src = text;
+                img.className = 'rounded-md max-w-xs';
+                messageBubble.appendChild(img);
+                messageBubble.classList.add('p-1');
+            } else if (role === 'model' && !text) {
                 messageBubble.innerHTML = `<div class="gemini-loader"><div class="arc"></div><div class="sparkle"></div></div>`;
             } else {
                  messageBubble.innerHTML = (role === 'model') ? parseMarkdown(text) : text;
@@ -384,7 +458,7 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
             if (shouldSave) {
-                chatContext.push({ role, parts: [{ text }] });
+                chatContext.push({ role, parts: [{ text }], isImage });
                 if (currentConversationId) {
                     const convoDocRef = doc(db, `artifacts/${appId}/users/${userId}/conversations/${currentConversationId}`);
                     setDoc(convoDocRef, { messages: chatContext }, { merge: true });
@@ -393,12 +467,21 @@
             return messageBubble;
         }
 
-        function updateMessage(bubble, text, role) {
+        function updateMessage(bubble, text, role, isImage = false) {
              setTimeout(() => {
-                bubble.innerHTML = parseMarkdown(text);
+                if (isImage) {
+                    const img = document.createElement('img');
+                    img.src = text;
+                    img.className = 'rounded-md max-w-xs';
+                    bubble.innerHTML = '';
+                    bubble.appendChild(img);
+                    bubble.classList.add('p-1');
+                } else {
+                    bubble.innerHTML = parseMarkdown(text);
+                }
                 chatContainer.scrollTop = chatContainer.scrollHeight;
                 
-                chatContext.push({ role, parts: [{ text }] });
+                chatContext.push({ role, parts: [{ text }], isImage });
                 if (currentConversationId) {
                     const convoDocRef = doc(db, `artifacts/${appId}/users/${userId}/conversations/${currentConversationId}`);
                     setDoc(convoDocRef, { messages: chatContext }, { merge: true });
@@ -412,11 +495,50 @@
             statusIndicator.textContent = isLoading ? 'Procesando...' : '';
         }
 
+        // --- LÓGICA DE MANEJO DE ARCHIVOS ---
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            appendMessage(`Archivo subido: <strong>${file.name}</strong>`, 'user');
+            
+            try {
+                let fileContent = "";
+                const extension = file.name.split('.').pop().toLowerCase();
+
+                if (extension === 'docx') {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await mammoth.extractRawText({ arrayBuffer });
+                    fileContent = result.value;
+                } else if (extension === 'xlsx') {
+                    const data = await file.arrayBuffer();
+                    const workbook = XLSX.read(data);
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    fileContent = XLSX.utils.sheet_to_csv(worksheet);
+                } else if (['txt', 'js', 'py', 'html', 'css', 'json', 'md'].includes(extension)) {
+                    fileContent = await file.text();
+                } else {
+                    appendMessage(`Lo siento, no puedo leer el contenido de archivos .${extension}.`, 'model');
+                    return;
+                }
+                
+                const prompt = `Analiza el siguiente contenido del archivo "${file.name}" y dame un resumen o los puntos clave:\n\n---\n\n${fileContent}`;
+                await handleChat(prompt, true);
+
+            } catch (error) {
+                console.error("Error procesando el archivo:", error);
+                appendMessage("Hubo un error al procesar el archivo.", 'model');
+            } finally {
+                fileUploadInput.value = '';
+            }
+        }
+
         // --- EVENT LISTENERS ---
         loginButton.addEventListener('click', signInWithGoogle);
         logoutButton.addEventListener('click', () => signOut(auth));
         newChatButton.addEventListener('click', startNewChat);
-        sendChatButton.addEventListener('click', handleChat);
+        sendChatButton.addEventListener('click', () => handleChat());
         chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleChat(); });
         
         menuToggle.addEventListener('click', () => {
@@ -429,8 +551,26 @@
             sidebarBackdrop.classList.add('hidden');
         });
 
+        attachButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            attachMenu.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', () => {
+            if (!attachMenu.classList.contains('hidden')) {
+                attachMenu.classList.add('hidden');
+            }
+        });
+
+        fileUploadInput.addEventListener('change', handleFileUpload);
+        
+        analyzeImageMenuButton.addEventListener('click', () => {
+            imageAnalysisModal.classList.remove('hidden');
+            attachMenu.classList.add('hidden');
+        });
+
         // --- INICIALIZACIÓN ---
-        setupAuth();
+        initializeFirebase();
     </script>
 </body>
 </html>
