@@ -6,276 +6,85 @@
     <title>Asistente IA: Jenny</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Librerías para leer archivos .docx y .xlsx -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        #chat-history {
-            scroll-behavior: smooth;
-            flex-grow: 1; /* Ensures it takes available space within its flex parent */
-            overflow-y: auto; /* Explicitly set here, but #chat-container also has it */
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #111827; }
+        #chat-history, #history-list { scroll-behavior: smooth; }
+        
+        /* Estilos para el contenido Markdown renderizado */
+        .prose h1, .prose h2, .prose h3 { margin-top: 1em; margin-bottom: 0.5em; font-weight: 600; color: #f9fafb;}
+        .prose p { margin-bottom: 0.75em; line-height: 1.6; color: #d1d5db; }
+        .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; color: #d1d5db;}
+        .prose pre { background-color: #0d1117; color: #c9d1d9; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1em; border: 1px solid #30363d;}
+        .prose code { font-family: 'SF Mono', 'Courier New', Courier, monospace; }
+        .prose :not(pre) > code { background-color: #374151; color: #e5e7eb; padding: 0.125rem 0.25rem; border-radius: 0.25rem; }
 
-        #history-list {
-            flex-grow: 1; /* Ensures it takes available space within its flex parent */
-            overflow-y: auto; /* Creates the vertical scrollbar when content exceeds the space */
-            padding-right: 4px; /* Space for the scrollbar, if desired */
-        }
+        /* Animación de Carga estilo Gemini */
+        .gemini-loader { width: 28px; height: 28px; position: relative; animation: rotate 2s linear infinite; }
+        .gemini-loader .sparkle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 12px; height: 12px; background: #818cf8; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+        .gemini-loader .arc { position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 3px solid transparent; border-top-color: #fbbf24; border-right-color: #fb7185; transform: rotate(45deg); }
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
 
-        /* Styles for chat list items to mimic Gemini's compact look */
-        .history-item {
-            display: flex; /* Use flexbox for alignment */
-            align-items: center; /* Vertically center content */
-            justify-content: space-between; /* Space out title and dots */
-            padding: 0.5rem 0.75rem; /* Adjust padding for compactness */
-            margin-bottom: 0.25rem; /* Small margin between items */
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: background-color 0.15s ease-in-out;
-            color: #d1d5db; /* Default text color - light gray */
-            font-size: 0.875rem; /* text-sm */
-            line-height: 1.25rem; /* line-height-sm */
-            position: relative; /* Needed for absolute positioning of context menu */
-        }
-
-        .history-item:hover {
-            background-color: #374151; /* Darker gray for hover */
-            color: #e5e7eb; /* Lighter text on hover */
-        }
-
-        .history-item.active {
-            background-color: #3b82f6; /* Blue background for active chat */
-            color: white; /* White text for active chat */
-            font-weight: 500; /* Medium font weight for active chat */
-        }
-
-        .history-item-title {
-            flex-grow: 1; /* Allows title to take up available space */
-            white-space: nowrap; /* Prevent text wrapping */
-            overflow: hidden; /* Hide overflow text */
-            text-overflow: ellipsis; /* Add ellipsis for overflow text */
-        }
-
-        /* Styles for the three dots menu button */
-        .history-item-menu-btn {
-            background: none;
-            border: none;
-            padding: 0.25rem;
-            border-radius: 0.25rem;
-            color: #9ca3af; /* Light gray for dots */
-            cursor: pointer;
-            visibility: hidden; /* Hidden by default */
-            opacity: 0; /* Hidden by default */
-            transition: opacity 0.15s ease-in-out, visibility 0.15s ease-in-out, background-color 0.15s ease-in-out;
-            flex-shrink: 0; /* Prevent shrinking */
-        }
-
-        .history-item:hover .history-item-menu-btn,
-        .history-item.active .history-item-menu-btn {
-            visibility: visible; /* Visible on hover/active */
-            opacity: 1; /* Fade in on hover/active */
-            background-color: rgba(255, 255, 255, 0.1); /* Slightly lighter background on hover of dots button */
-        }
-
-        .history-item-menu-btn:hover {
-             background-color: rgba(255, 255, 255, 0.2); /* Even lighter on actual dots button hover */
-        }
-
-        /* Context Menu Styles */
-        .context-menu {
-            position: absolute;
-            background-color: #2d3748; /* Darker background for menu */
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); /* Darker shadow */
-            z-index: 50;
-            min-width: 150px;
-            display: none; /* Hidden by default */
-            padding: 0.5rem 0;
-            right: 0.5rem; /* Position relative to the parent history item */
-            top: 50%; /* Center vertically initially */
-            transform: translateY(-50%); /* Adjust to truly center */
-        }
-
-        .context-menu button {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            width: 100%;
-            padding: 0.6rem 1rem;
-            text-align: left;
-            color: #e5e7eb; /* Light text color */
-            font-size: 0.875rem;
-            background: none;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.1s ease-in-out;
-        }
-
-        .context-menu button:hover {
-            background-color: #4a5568; /* Slightly lighter on hover */
-        }
-        .context-menu button svg {
-            color: #9ca3af; /* Icon color */
-        }
-        .context-menu button:hover svg {
-            color: #e5e7eb; /* Icon color on hover */
-        }
-
-        /* Separator for context menu */
-        .context-menu .separator {
-            height: 1px;
-            background-color: #4a5568;
-            margin: 0.5rem 0;
-        }
-
-        /* Sidebar overall appearance */
-        #history-sidebar {
-            background-color: #1f2937; /* Dark background for sidebar */
-            color: #e5e7eb; /* Light text for sidebar */
-            display: flex; /* Make it a flex container */
-            flex-direction: column; /* Stack items vertically */
-            height: 100vh; /* Ensure it takes full viewport height */
-        }
-        #history-sidebar h2 {
-            color: #9ca3af; /* Lighter gray for "Historial" title */
-        }
-        #new-chat-button {
-            background-color: #3b82f6; /* Blue for new chat button */
-            color: white;
-        }
-        #new-chat-button:hover {
-            background-color: #2563eb; /* Darker blue on hover */
-        }
-
-        /* Main chat area background - slightly darker */
-        .flex-1.flex.flex-col.bg-white\/60.backdrop-blur-xl {
-            background-color: #2d3748; /* Darker background for chat area */
-            color: #e5e7eb; /* Light text color */
-        }
-
-        /* Chat header */
-        header {
-            background-color: #1f2937; /* Darker header */
-            border-color: #374151; /* Darker border */
-            color: #e5e7eb; /* White text for Jenny title */
-        }
-        header #user-name {
-            color: #9ca3af; /* User name color */
-        }
-        header #logout-button {
-            color: #6b7280; /* Logout button color */
-        }
-
-        /* User message bubbles */
-        .prose.max-w-lg.bg-gray-100.p-3.rounded-xl {
-            background-color: #4a5568; /* Darker background for user bubbles */
-            color: #e5e7eb; /* Light text in user bubbles */
-        }
-
-        /* Model message bubbles */
-        .prose.max-w-lg.bg-white {
-            background-color: #374151; /* Darker background for model bubbles */
-            color: #e5e7eb; /* Light text in model bubbles */
-        }
-        /* Specific elements inside prose for model messages */
-        .prose h1, .prose h2, .prose h3 { color: #e5e7eb; }
-        .prose strong { color: #e5e7eb; }
-        .prose em { color: #e5e7eb; }
-        .prose :not(pre) > code {
-            background-color: #1f2937;
-            color: #a78bfa; /* Example: purple for inline code */
-        }
-        .prose pre {
-            background-color: #1a202c; /* Even darker for code blocks */
-            border: 1px solid #4a5568;
-        }
-
-        /* Chat input area */
-        .flex.items-center.gap-2.bg-gray-200\/50.rounded-2xl.p-2.relative {
-            background-color: #374151; /* Darker background for input area */
-        }
-        #chat-input {
-            color: #e5e7eb; /* Text color in input */
-            background-color: transparent; /* Ensure input background is transparent */
-        }
-        #chat-input::placeholder {
-            color: #9ca3af; /* Placeholder color */
-        }
-        #send-chat-button {
-            background-color: #3b82f6; /* Blue send button */
-        }
-        #send-chat-button:hover {
-            background-color: #2563eb;
-        }
-        #attach-button {
-            color: #9ca3af; /* Attach button icon color */
-        }
-        #attach-button:hover {
-            background-color: #4a5568; /* Attach button hover background */
-        }
-
-        /* Status indicator */
-        #status-indicator {
-            color: #9ca3af;
-        }
-
-        /* Welcome screen */
-        #welcome-screen h2 {
-            color: #e5e7eb;
-        }
-        #welcome-screen p {
-            color: #9ca3af;
-        }
-        #welcome-screen svg {
-            color: white;
-        }
-
-        /* Gemini Loader for model responses */
-        .gemini-loader .sparkle { background: #6366f1; /* Indigo */ }
-        .gemini-loader .arc {
-            border-top-color: #f59e0b; /* Amber */
-            border-right-color: #ef4444; /* Red */
-        }
+        /* Estilos del Historial */
+        .history-item { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; margin-bottom: 0.25rem; border-radius: 0.5rem; cursor: pointer; transition: background-color 0.15s ease-in-out; color: #d1d5db; font-size: 0.875rem; line-height: 1.25rem; position: relative; }
+        .history-item:hover { background-color: #374151; color: #e5e7eb; }
+        .history-item.active { background-color: #3b82f6; color: white; font-weight: 500; }
+        .history-item-title { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .history-item-menu-btn { background: none; border: none; padding: 0.25rem; border-radius: 0.25rem; color: #9ca3af; cursor: pointer; visibility: hidden; opacity: 0; transition: all 0.15s ease-in-out; flex-shrink: 0; }
+        .history-item:hover .history-item-menu-btn, .history-item.active .history-item-menu-btn { visibility: visible; opacity: 1; }
+        .history-item-menu-btn:hover { background-color: rgba(255, 255, 255, 0.2); }
+        .context-menu { position: absolute; background-color: #2d3748; border-radius: 0.5rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); z-index: 50; min-width: 150px; display: none; padding: 0.5rem 0; right: 0.5rem; top: 50%; transform: translateY(-50%); }
+        .context-menu button { display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.6rem 1rem; text-align: left; color: #e5e7eb; font-size: 0.875rem; background: none; border: none; cursor: pointer; transition: background-color 0.1s ease-in-out; }
+        .context-menu button:hover { background-color: #4a5568; }
+        .context-menu button svg { color: #9ca3af; }
     </style>
 </head>
-<body class="animated-gradient">
+<body class="bg-gray-900">
 
-    <div id="login-screen" class="w-full h-screen flex items-center justify-center p-4">
-        <div class="text-center max-w-md w-full bg-white/60 backdrop-blur-xl p-8 rounded-2xl shadow-lg">
+    <!-- Pantalla de Inicio de Sesión -->
+    <div id="login-screen" class="w-full h-screen flex items-center justify-center p-4 bg-gray-900">
+        <div class="text-center max-w-md w-full bg-gray-800/50 backdrop-blur-xl p-8 rounded-2xl shadow-lg border border-gray-700">
              <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center mb-6 mx-auto">
-                 <svg class="w-12 h-12 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.75L13.2625 8.2375L18.75 9.5L13.2625 10.7625L12 16.25L10.7375 10.7625L5.25 9.5L10.7375 8.2375L12 2.75Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg class="w-12 h-12 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.75L13.2625 8.2375L18.75 9.5L13.2625 10.7625L12 16.25L10.7375 10.7625L5.25 9.5L10.7375 8.2375L12 2.75Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
-            <h1 class="text-4xl font-bold mb-2">Bienvenido a Jenny</h1>
-            <p class="text-gray-600 mb-8">Tu asistente personal con historial de chat.</p>
+            <h1 class="text-4xl font-bold mb-2 text-white">Bienvenido a Jenny</h1>
+            <p class="text-gray-400 mb-8">Tu asistente personal con historial de chat.</p>
             <button id="login-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 mx-auto w-full justify-center disabled:opacity-75 disabled:cursor-wait">
-                <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.222,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.99,36.566,44,30.836,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                <svg class="w-5 h-5" viewBox="0 0 48 48"><!-- Google Icon --></svg>
                 <span id="login-button-text">Iniciar Sesión con Google</span>
             </button>
             <p id="login-error" class="text-red-500 mt-4"></p>
         </div>
     </div>
 
+    <!-- Pantalla de la Aplicación -->
     <div id="app-screen" class="w-full h-screen flex hidden relative">
         <div id="sidebar-backdrop" class="fixed inset-0 bg-black/50 z-30 hidden sm:hidden"></div>
 
-        <div id="history-sidebar" class="fixed sm:relative inset-y-0 left-0 bg-gray-100/70 backdrop-blur-xl w-64 p-4 flex flex-col border-r border-gray-200 z-40 transform -translate-x-full sm:translate-x-0 transition-transform duration-300 ease-in-out" style="height: 100vh;">
-            <button id="new-chat-button" class="w-full text-left p-2 mb-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+        <div id="history-sidebar" class="fixed sm:relative inset-y-0 left-0 bg-gray-800 w-64 p-4 flex flex-col border-r border-gray-700 z-40 transform -translate-x-full sm:translate-x-0 transition-transform duration-300 ease-in-out">
+            <button id="new-chat-button" class="w-full text-left p-2 mb-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                 + Nuevo Chat
             </button>
-            <h2 class="text-sm font-semibold text-gray-500 mb-2">Historial</h2>
+            <h2 class="text-sm font-semibold text-gray-400 mb-2 px-2">Historial</h2>
             <div id="history-list" class="flex-grow overflow-y-auto"></div>
+            <button id="admin-panel-button" class="hidden w-full text-left p-2 mt-4 bg-yellow-500 text-black rounded-lg hover:bg-yellow-600">
+                Panel de Admin
+            </button>
         </div>
 
-        <div class="flex-1 flex flex-col bg-white/60 backdrop-blur-xl">
-            <header class="p-4 border-b border-gray-200 flex justify-between items-center">
-                 <button id="menu-toggle" class="sm:hidden p-2">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        <div class="flex-1 flex flex-col bg-gray-900">
+            <header class="p-4 border-b border-gray-700 flex justify-between items-center">
+                 <button id="menu-toggle" class="sm:hidden p-2 text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
                  </button>
-                 <h1 class="text-xl font-semibold text-gray-700">Jenny</h1>
+                 <h1 class="text-xl font-semibold text-white">Jenny</h1>
                  <div id="user-profile" class="flex items-center gap-3">
-                     <span id="user-name" class="font-medium text-gray-600 hidden sm:inline"></span>
+                     <span id="user-credits" class="font-medium text-yellow-400"></span>
+                     <span id="user-name" class="font-medium text-gray-300 hidden sm:inline"></span>
                      <img id="user-photo" class="w-8 h-8 rounded-full" alt="Foto de perfil">
-                     <button id="logout-button" class="text-sm text-gray-500 hover:underline hidden sm:inline">Salir</button>
+                     <button id="logout-button" class="text-sm text-gray-400 hover:underline hidden sm:inline">Salir</button>
                  </div>
             </header>
 
@@ -284,61 +93,94 @@
                     <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center mb-4">
                         <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.75L13.2625 8.2375L18.75 9.5L13.2625 10.7625L12 16.25L10.7375 10.7625L5.25 9.5L10.7375 8.2375L12 2.75Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </div>
-                    <h2 class="text-3xl font-bold text-gray-800">¿Cómo puedo ayudarte hoy?</h2>
+                    <h2 class="text-3xl font-bold text-white">¿Cómo puedo ayudarte hoy?</h2>
                 </div>
                 <div id="chat-history" class="space-y-6"></div>
             </div>
 
             <div class="p-4 sm:p-6 bg-transparent">
-                 <div id="status-indicator" class="text-gray-500 text-sm h-5 mb-2 text-center"></div>
-                 <div class="flex items-center gap-2 bg-gray-200/50 rounded-2xl p-2 relative">
-                     <div id="attach-menu" class="absolute bottom-full left-0 mb-2 bg-white rounded-lg shadow-lg border hidden w-48">
-                         <label class="flex items-center gap-3 p-3 hover:bg-gray-100 cursor-pointer text-sm">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-                             Subir Archivo
-                             <input type="file" id="file-upload-input" class="hidden">
-                         </label>
-                         <button id="analyze-image-menu-button" class="flex items-center gap-3 p-3 hover:bg-gray-100 w-full text-sm">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                             Analizar Imagen
-                         </button>
-                     </div>
-                     <button id="attach-button" class="p-2 text-gray-600 hover:bg-gray-200 rounded-full transition-colors">
-                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                     </button>
-                     <input type="text" id="chat-input" placeholder="Escribe una pregunta..." class="flex-grow bg-transparent p-2 focus:outline-none">
-                     <button id="send-chat-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold p-2 rounded-full">
-                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                     </button>
-                 </div>
+                 <div id="status-indicator" class="text-gray-400 text-sm h-5 mb-2 text-center"></div>
+                 <div class="flex items-center gap-2 bg-gray-800 rounded-2xl p-2 relative">
+                    <label class="p-2 text-gray-400 hover:bg-gray-700 rounded-full transition-colors cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                        <input type="file" id="file-upload-input" class="hidden">
+                    </label>
+                    <input type="text" id="chat-input" placeholder="Escribe una pregunta..." class="flex-grow bg-transparent p-2 focus:outline-none text-white">
+                    <button id="send-chat-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold p-2 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Bienvenida -->
+    <div id="welcome-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-lg max-w-lg w-full text-white border border-gray-700">
+            <h2 class="text-2xl font-bold mb-4">¡Bienvenido a Jenny!</h2>
+            <div class="prose prose-invert text-gray-300">
+                <p>Estoy aquí para ayudarte. Esto es lo que puedes hacer:</p>
+                <ul>
+                    <li><strong>Conversar conmigo:</strong> Pregúntame lo que quieras.</li>
+                    <li><strong>Analizar Archivos:</strong> Sube documentos (.docx, .xlsx, .txt) y te daré un resumen.</li>
+                    <li><strong>Generar Imágenes:</strong> Pídeme que cree una imagen con una descripción (ej. "crea una imagen de un tigre en la luna").</li>
+                </ul>
+                <p class="font-semibold mt-6">Próximamente:</p>
+                <ul>
+                    <li>Análisis de imágenes desde tu cámara (función temporalmente desactivada).</li>
+                    <li>Y muchas más sorpresas...</li>
+                </ul>
+            </div>
+            <button id="close-welcome-modal" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">¡Entendido!</button>
+        </div>
+    </div>
+
+    <!-- Modal Premium -->
+    <div id="premium-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-lg max-w-lg w-full text-white border border-gray-700">
+            <h2 class="text-2xl font-bold mb-4">¡Desbloquea Jenny Pro!</h2>
+            <p class="text-gray-300 mb-6">Para usar funciones avanzadas como la generación de imágenes, necesitas créditos Pro.</p>
+            <div class="bg-white p-4 rounded-lg text-center">
+                <img src="https://placehold.co/200x200/ffffff/000000?text=QR+Yape+Aqui" alt="QR de Yape" class="mx-auto">
+                <p class="text-gray-800 font-semibold mt-2">Escanea para comprar créditos</p>
+            </div>
+            <div class="mt-6">
+                <label for="yape-code-input" class="block text-sm font-medium text-gray-300">Introduce tu código de confirmación:</label>
+                <input type="text" id="yape-code-input" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2">
+            </div>
+            <div class="flex gap-4 mt-6">
+                <button id="close-premium-modal" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                <button id="confirm-payment-button" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg">Confirmar</button>
             </div>
         </div>
     </div>
 
-    <div id="image-analysis-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white p-6 rounded-xl shadow-lg max-w-lg w-full">
-            <h2 class="text-2xl font-semibold mb-4 text-center">Analiza una Imagen</h2>
-            <div id="image-container" class="relative bg-gray-900 rounded-lg overflow-hidden mb-4 min-h-[250px] flex items-center justify-center">
-                <video id="camera-stream" autoplay playsinline class="w-full h-auto rounded-lg"></video>
-                <img id="image-preview" class="hidden w-full h-auto rounded-lg" alt="Vista previa de la imagen">
-                <canvas id="capture-canvas" class="hidden"></canvas>
+    <!-- Modal de Administrador -->
+    <div id="admin-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-lg max-w-lg w-full text-white border border-gray-700">
+            <h2 class="text-2xl font-bold mb-4">Panel de Administrador</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="admin-userid-input" class="block text-sm font-medium text-gray-300">ID de Usuario:</label>
+                    <input type="text" id="admin-userid-input" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2">
+                </div>
+                <div>
+                    <label for="admin-credits-input" class="block text-sm font-medium text-gray-300">Créditos a añadir:</label>
+                    <input type="number" id="admin-credits-input" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2">
+                </div>
             </div>
-            <div id="image-controls" class="grid grid-cols-2 gap-2 mb-4">
-                 <button id="capture-button" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg">Tomar Foto</button>
-                 <label for="image-upload-input" class="cursor-pointer text-center w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Subir Imagen</label>
-                 <input type="file" id="image-upload-input" class="hidden" accept="image/*">
+            <div class="flex gap-4 mt-6">
+                <button id="close-admin-modal" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                <button id="add-credits-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Añadir Créditos</button>
             </div>
-            <button id="analyze-image-button" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:bg-purple-300" disabled>
-                ✨ Analizar y Enviar al Chat
-            </button>
-            <button id="close-modal-button" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg mt-2">Cancelar</button>
         </div>
     </div>
+
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, deleteDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- DOM ELEMENTS ---
         const loginScreen = document.getElementById('login-screen');
@@ -360,31 +202,29 @@
         const newChatButton = document.getElementById('new-chat-button');
         const menuToggle = document.getElementById('menu-toggle');
         const sidebarBackdrop = document.getElementById('sidebar-backdrop');
-        const attachButton = document.getElementById('attach-button');
-        const attachMenu = document.getElementById('attach-menu');
         const fileUploadInput = document.getElementById('file-upload-input');
-        const analyzeImageMenuButton = document.getElementById('analyze-image-menu-button');
-        const imageAnalysisModal = document.getElementById('image-analysis-modal');
-        const closeModalButton = document.getElementById('close-modal-button');
-        const video = document.getElementById('camera-stream');
-        const canvas = document.getElementById('capture-canvas');
-        const imagePreview = document.getElementById('image-preview');
-        const captureButton = document.getElementById('capture-button');
-        const imageUploadInput = document.getElementById('image-upload-input');
-        const analyzeImageButton = document.getElementById('analyze-image-button');
-
-        // NEW: Context menu elements
-        let activeContextMenu = null; // To keep track of the currently open context menu
-
+        const welcomeModal = document.getElementById('welcome-modal');
+        const closeWelcomeModal = document.getElementById('close-welcome-modal');
+        const premiumModal = document.getElementById('premium-modal');
+        const closePremiumModal = document.getElementById('close-premium-modal');
+        const confirmPaymentButton = document.getElementById('confirm-payment-button');
+        const adminPanelButton = document.getElementById('admin-panel-button');
+        const adminModal = document.getElementById('admin-modal');
+        const closeAdminModal = document.getElementById('close-admin-modal');
+        const addCreditsButton = document.getElementById('add-credits-button');
+        const userCreditsSpan = document.getElementById('user-credits');
+        let activeContextMenu = null;
+        
         // --- APP STATE ---
-        let app, auth, db, userId;
+        let app, auth, db, userId, userProfile;
         let unsubscribeConversations = null;
+        let unsubscribeUserProfile = null;
         let currentConversationId = null;
         let chatContext = [];
-        let currentImageB64 = null;
-
+        
         const API_KEY = "AIzaSyB1xjT_S_pPECCQZ50VDDb3vRbQBa_EHpk";
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-jenny-app';
+        const ADMIN_UID = "YOUR_ADMIN_UID_HERE"; // Reemplaza con tu UID de Firebase
 
         // --- CONFIGURACIÓN DE FIREBASE (INTEGRADA) ---
         const firebaseConfig = {
@@ -412,14 +252,23 @@
                         loginScreen.classList.add('hidden');
                         appScreen.classList.remove('hidden');
                         appScreen.classList.add('flex');
+                        
+                        setupUserProfile(user);
                         startNewChat();
                         loadConversationList();
+
+                        if (user.uid === ADMIN_UID) {
+                            adminPanelButton.classList.remove('hidden');
+                        }
+
                     } else {
                         userId = null;
+                        userProfile = null;
                         loginScreen.classList.remove('hidden');
                         appScreen.classList.add('hidden');
                         appScreen.classList.remove('flex');
                         if (unsubscribeConversations) unsubscribeConversations();
+                        if (unsubscribeUserProfile) unsubscribeUserProfile();
                     }
                 });
             } catch (error) {
@@ -428,7 +277,7 @@
                 loginButton.disabled = true;
             }
         }
-
+        
         async function signInWithGoogle() {
             if (!auth) {
                 loginError.textContent = "Firebase no está listo. Intenta de nuevo en un momento.";
@@ -456,6 +305,25 @@
         }
 
         // --- FIRESTORE & CHAT LOGIC ---
+        function setupUserProfile(user) {
+            if (unsubscribeUserProfile) unsubscribeUserProfile();
+            const userDocRef = doc(db, `artifacts/${appId}/users/${userId}`);
+            
+            onSnapshot(userDocRef, (doc) => {
+                if (doc.exists()) {
+                    userProfile = doc.data();
+                    userCreditsSpan.textContent = `Créditos: ${userProfile.credits || 0}`;
+                } else {
+                    // Crear perfil si no existe
+                    setDoc(userDocRef, {
+                        displayName: user.displayName,
+                        email: user.email,
+                        credits: 5 // Créditos iniciales para nuevos usuarios
+                    });
+                }
+            });
+        }
+
         function loadConversationList() {
             if (unsubscribeConversations) unsubscribeConversations();
             const convosRef = collection(db, `artifacts/${appId}/users/${userId}/conversations`);
@@ -467,54 +335,29 @@
                     const convo = doc.data();
                     const title = convo.title || 'Nuevo Chat';
                     const li = document.createElement('li');
-
-                    // Add history-item class and data-id
-                    li.className = 'history-item'; // Class for styling
-                    li.dataset.id = doc.id; // Store conversation ID
+                    li.className = 'history-item';
+                    li.dataset.id = doc.id;
 
                     const titleSpan = document.createElement('span');
                     titleSpan.className = 'history-item-title';
                     titleSpan.textContent = title;
                     li.appendChild(titleSpan);
 
-                    // Three dots menu button
                     const menuBtn = document.createElement('button');
                     menuBtn.className = 'history-item-menu-btn';
-                    menuBtn.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle>
-                        </svg>
-                    `;
+                    menuBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>`;
                     li.appendChild(menuBtn);
 
-                    // Context Menu Structure
                     const contextMenu = document.createElement('div');
                     contextMenu.className = 'context-menu';
                     contextMenu.innerHTML = `
-                        <button data-action="share">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
-                            Compartir
-                        </button>
-                        <button data-action="pin">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path><line x1="16" y1="2" x2="16" y2="6"></line><line x1="19" y1="3" x2="19" y2="7"></line><line x1="12" y1="2" x2="12" y2="6"></line><line x1="15" y1="9" x2="15" y2="21"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="3" y1="15" x2="21" y2="15"></line></svg>
-                            Fijar
-                        </button>
-                        <button data-action="rename">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                            Cambiar nombre
-                        </button>
-                        <div class="separator"></div>
-                        <button data-action="delete">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                            Eliminar
-                        </button>
+                        <button data-action="rename">Cambiar nombre</button>
+                        <button data-action="delete">Eliminar</button>
                     `;
                     li.appendChild(contextMenu);
 
-                    // Event listener for showing context menu
                     menuBtn.addEventListener('click', (e) => {
-                        e.stopPropagation(); // Prevent loading chat when clicking dots
-                        // Close any other open context menu
+                        e.stopPropagation();
                         if (activeContextMenu && activeContextMenu !== contextMenu) {
                             activeContextMenu.style.display = 'none';
                         }
@@ -522,72 +365,45 @@
                         activeContextMenu = contextMenu.style.display === 'block' ? contextMenu : null;
                     });
 
-                    // Event listener for context menu actions
                     contextMenu.querySelectorAll('button').forEach(btn => {
                         btn.addEventListener('click', async (e) => {
-                            e.stopPropagation(); // Prevent chat loading
+                            e.stopPropagation();
                             const action = btn.dataset.action;
-                            const convoIdToDelete = li.dataset.id; // Get ID from parent li
-                            contextMenu.style.display = 'none'; // Hide menu after action
+                            const convoId = li.dataset.id;
+                            contextMenu.style.display = 'none';
                             activeContextMenu = null;
 
-                            switch (action) {
-                                case 'share':
-                                    alert('Acción: Compartir conversación ' + convoIdToDelete);
-                                    // Implement share functionality
-                                    break;
-                                case 'pin':
-                                    alert('Acción: Fijar conversación ' + convoIdToDelete);
-                                    // Implement pin functionality
-                                    break;
-                                case 'rename':
-                                    const newTitle = prompt('Nuevo nombre para el chat:', title);
-                                    if (newTitle && newTitle.trim() !== '') {
-                                        const convoDocRef = doc(db, `artifacts/${appId}/users/${userId}/conversations/${convoIdToDelete}`);
-                                        await setDoc(convoDocRef, { title: newTitle.trim() }, { merge: true });
+                            if (action === 'delete') {
+                                if (confirm('¿Seguro que quieres eliminar este chat?')) {
+                                    const convoDocRef = doc(db, `artifacts/${appId}/users/${userId}/conversations/${convoId}`);
+                                    await deleteDoc(convoDocRef);
+                                    if (currentConversationId === convoId) {
+                                        startNewChat();
                                     }
-                                    break;
-                                case 'delete':
-                                    if (confirm('¿Estás seguro de que quieres eliminar este chat?')) {
-                                        if (convoIdToDelete) {
-                                            try {
-                                                const convoDocRef = doc(db, `artifacts/${appId}/users/${userId}/conversations/${convoIdToDelete}`);
-                                                await deleteDoc(convoDocRef);
-                                                console.log("Chat eliminado:", convoIdToDelete); // For debugging
-                                                if (currentConversationId === convoIdToDelete) {
-                                                    startNewChat(); // If current chat deleted, start a new one
-                                                }
-                                            } catch (error) {
-                                                console.error("Error al eliminar el chat:", error);
-                                                alert("No se pudo eliminar el chat: " + error.message);
-                                            }
-                                        } else {
-                                            console.error("convoIdToDelete es nulo o indefinido, no se puede eliminar.");
-                                        }
-                                    }
-                                    break;
+                                }
+                            } else if (action === 'rename') {
+                                const newTitle = prompt('Nuevo nombre para el chat:', title);
+                                if (newTitle && newTitle.trim() !== '') {
+                                    const convoDocRef = doc(db, `artifacts/${appId}/users/${userId}/conversations/${convoId}`);
+                                    await setDoc(convoDocRef, { title: newTitle.trim() }, { merge: true });
+                                }
                             }
                         });
                     });
 
                     li.onclick = () => {
-                        // Close any open context menu when clicking on a chat item
                         if (activeContextMenu) {
                             activeContextMenu.style.display = 'none';
                             activeContextMenu = null;
                         }
-                        // Remove active class from all other items
                         document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
-                        // Add active class to the clicked item
                         li.classList.add('active');
                         loadConversation(doc.id);
-                        // Hide sidebar on mobile after selection
                         historySidebar.classList.add('-translate-x-full');
                         sidebarBackdrop.classList.add('hidden');
                     };
                     historyList.appendChild(li);
 
-                    // Set active class if this is the current conversation when list loads
                     if (doc.id === currentConversationId) {
                         li.classList.add('active');
                     }
@@ -597,16 +413,11 @@
 
         function loadConversation(convoId) {
             currentConversationId = convoId;
-            // Ensure correct active state when a conversation is loaded
             document.querySelectorAll('.history-item').forEach(item => {
-                if (item.dataset.id === convoId) {
-                    item.classList.add('active');
-                } else {
-                    item.classList.remove('active');
-                }
+                item.classList.toggle('active', item.dataset.id === convoId);
             });
             const convoDocRef = doc(db, `artifacts/${appId}/users/${userId}/conversations/${convoId}`);
-
+            
             onSnapshot(convoDocRef, (doc) => {
                 chatHistory.innerHTML = '';
                 if (doc.exists()) {
@@ -626,11 +437,10 @@
             chatContext = [];
             chatHistory.innerHTML = '';
             welcomeScreen.classList.remove('hidden');
-            // Remove active class from all history items when starting a new chat
             document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
         }
 
-        async function handleChat(promptOverride = null, isFileContext = false, isImage = false) {
+        async function handleChat(promptOverride = null, isFileContext = false) {
             const userPrompt = promptOverride || chatInput.value.trim();
             if (!userPrompt) return;
 
@@ -643,34 +453,26 @@
 
             try {
                 const isNewChat = !currentConversationId;
-                let currentConvoIdForUpdate = currentConversationId;
-
                 if (isNewChat) {
                     const convosRef = collection(db, `artifacts/${appId}/users/${userId}/conversations`);
                     const newConvoDoc = await addDoc(convosRef, {
-                        title: userPrompt.substring(0, 30) + (userPrompt.length > 30 ? '...' : ''), // Initial title from first message, add "..." if truncated
+                        title: userPrompt.substring(0, 30),
                         timestamp: serverTimestamp(),
                         messages: []
                     });
-                    currentConvoIdForUpdate = newConvoDoc.id;
-                    currentConversationId = newConvoDoc.id; // Update global currentConversationId
-                    loadConversationList(); // Reload list to show new chat
-                    // Ensure the new chat is marked as active
-                    document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
-                    const newChatItem = document.querySelector(`.history-item[data-id="${currentConvoIdForUpdate}"]`);
-                    if (newChatItem) newChatItem.classList.add('active');
+                    currentConversationId = newConvoDoc.id;
                 }
-
+                
                 const currentTurn = { role: "user", parts: [{ text: userPrompt }] };
-                const tempContext = chatContext.map(({role, parts}) => ({role, parts})); // Limpiar isImage
+                const tempContext = chatContext.map(({role, parts}) => ({role, parts}));
                 tempContext.push(currentTurn);
-
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+                
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${API_KEY}`;
                 const payload = { contents: tempContext };
                 const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
                 if (!response.ok) throw new Error((await response.json()).error.message);
-
+                
                 const result = await response.json();
                 const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
@@ -686,7 +488,7 @@
                 setChatUIState(false);
             }
         }
-
+        
         function parseMarkdown(text) {
             const lines = text.split('\n');
             let html = '';
@@ -732,18 +534,18 @@
             welcomeScreen.classList.add('hidden');
             const messageWrapper = document.createElement('div');
             messageWrapper.className = `flex items-start gap-3 ${role === 'user' ? 'justify-end' : 'justify-start'}`;
-
+            
             const messageBubble = document.createElement('div');
-
-            if(role === 'model') {
+            
+            if(role === 'model') { 
                 const avatar = document.createElement('div');
                 avatar.className = 'w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0';
                 avatar.innerHTML = `<svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.75L13.2625 8.2375L18.75 9.5L13.2625 10.7625L12 16.25L10.7375 10.7625L5.25 9.5L10.7375 8.2375L12 2.75Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
                 messageWrapper.appendChild(avatar);
             }
-
-            messageBubble.className = `prose max-w-lg ${role === 'user' ? 'bg-gray-100 p-3 rounded-xl' : 'bg-white'}`;
-
+            
+            messageBubble.className = `prose max-w-lg ${role === 'user' ? 'bg-gray-700 text-white p-3 rounded-xl' : 'bg-gray-800'}`;
+            
             if (isImage) {
                 const img = document.createElement('img');
                 img.src = text;
@@ -755,7 +557,7 @@
             } else {
                  messageBubble.innerHTML = (role === 'model') ? parseMarkdown(text) : text;
             }
-
+            
             messageWrapper.appendChild(messageBubble);
             chatHistory.appendChild(messageWrapper);
             chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -783,7 +585,7 @@
                     bubble.innerHTML = parseMarkdown(text);
                 }
                 chatContainer.scrollTop = chatContainer.scrollHeight;
-
+                
                 chatContext.push({ role, parts: [{ text }], isImage });
                 if (currentConversationId) {
                     const convoDocRef = doc(db, `artifacts/${appId}/users/${userId}/conversations/${currentConversationId}`);
@@ -804,7 +606,7 @@
             if (!file) return;
 
             appendMessage(`Archivo subido: <strong>${file.name}</strong>`, 'user');
-
+            
             try {
                 let fileContent = "";
                 const extension = file.name.split('.').pop().toLowerCase();
@@ -825,7 +627,7 @@
                     appendMessage(`Lo siento, no puedo leer el contenido de archivos .${extension}.`, 'model');
                     return;
                 }
-
+                
                 const prompt = `Analiza el siguiente contenido del archivo "${file.name}" y dame un resumen o los puntos clave:\n\n---\n\n${fileContent}`;
                 await handleChat(prompt, true);
 
@@ -843,7 +645,7 @@
         newChatButton.addEventListener('click', startNewChat);
         sendChatButton.addEventListener('click', () => handleChat());
         chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleChat(); });
-
+        
         menuToggle.addEventListener('click', () => {
             historySidebar.classList.remove('-translate-x-full');
             sidebarBackdrop.classList.remove('hidden');
@@ -854,32 +656,10 @@
             sidebarBackdrop.classList.add('hidden');
         });
 
-        attachButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            attachMenu.classList.toggle('hidden');
-        });
-
-        document.addEventListener('click', (e) => {
-            // Close attach menu if clicking outside
-            if (!attachMenu.classList.contains('hidden') && !attachMenu.contains(e.target) && !attachButton.contains(e.target)) {
-                attachMenu.classList.add('hidden');
-            }
-            // Close any active context menu when clicking anywhere else, unless it's within the menu itself
-            if (activeContextMenu && !activeContextMenu.contains(e.target) && !e.target.closest('.history-item-menu-btn')) {
-                activeContextMenu.style.display = 'none';
-                activeContextMenu = null;
-            }
-        });
-
         fileUploadInput.addEventListener('change', handleFileUpload);
-
-        analyzeImageMenuButton.addEventListener('click', () => {
-            imageAnalysisModal.classList.remove('hidden');
-            attachMenu.classList.add('hidden');
-        });
-
-        closeModalButton.addEventListener('click', () => {
-            imageAnalysisModal.classList.add('hidden');
+        
+        closeWelcomeModal.addEventListener('click', () => {
+            welcomeModal.classList.add('hidden');
         });
 
         // --- INICIALIZACIÓN ---
