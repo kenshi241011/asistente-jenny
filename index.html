@@ -39,6 +39,14 @@
         .context-menu button { display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.6rem 1rem; text-align: left; color: #e5e7eb; font-size: 0.875rem; background: none; border: none; cursor: pointer; transition: background-color 0.1s ease-in-out; }
         .context-menu button:hover { background-color: #4a5568; }
         .context-menu button svg { color: #9ca3af; }
+        
+        /* Animación para el botón de micrófono */
+        .mic-listening { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
     </style>
 </head>
 <body class="bg-gray-900">
@@ -69,9 +77,6 @@
             </button>
             <h2 class="text-sm font-semibold text-gray-400 mb-2 px-2">Historial</h2>
             <div id="history-list" class="flex-grow overflow-y-auto"></div>
-            <button id="admin-panel-button" class="hidden w-full text-left p-2 mt-4 bg-yellow-500 text-black rounded-lg hover:bg-yellow-600">
-                Panel de Admin
-            </button>
         </div>
 
         <div class="flex-1 flex flex-col bg-gray-900">
@@ -81,7 +86,6 @@
                  </button>
                  <h1 class="text-xl font-semibold text-white">Jenny</h1>
                  <div id="user-profile" class="flex items-center gap-3">
-                     <span id="user-credits" class="font-medium text-yellow-400"></span>
                      <span id="user-name" class="font-medium text-gray-300 hidden sm:inline"></span>
                      <img id="user-photo" class="w-8 h-8 rounded-full" alt="Foto de perfil">
                      <button id="logout-button" class="text-sm text-gray-400 hover:underline hidden sm:inline">Salir</button>
@@ -105,6 +109,9 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                         <input type="file" id="file-upload-input" class="hidden">
                     </label>
+                    <button id="mic-button" class="p-2 text-gray-400 hover:bg-gray-700 rounded-full transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                    </button>
                     <input type="text" id="chat-input" placeholder="Escribe una pregunta..." class="flex-grow bg-transparent p-2 focus:outline-none text-white">
                     <button id="send-chat-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold p-2 rounded-full">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
@@ -135,52 +142,11 @@
         </div>
     </div>
 
-    <!-- Modal Premium -->
-    <div id="premium-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-gray-800 p-8 rounded-2xl shadow-lg max-w-lg w-full text-white border border-gray-700">
-            <h2 class="text-2xl font-bold mb-4">¡Desbloquea Jenny Pro!</h2>
-            <p class="text-gray-300 mb-6">Para usar funciones avanzadas como la generación de imágenes, necesitas créditos Pro.</p>
-            <div class="bg-white p-4 rounded-lg text-center">
-                <img src="https://placehold.co/200x200/ffffff/000000?text=QR+Yape+Aqui" alt="QR de Yape" class="mx-auto">
-                <p class="text-gray-800 font-semibold mt-2">Escanea para comprar créditos</p>
-            </div>
-            <div class="mt-6">
-                <label for="yape-code-input" class="block text-sm font-medium text-gray-300">Introduce tu código de confirmación:</label>
-                <input type="text" id="yape-code-input" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2">
-            </div>
-            <div class="flex gap-4 mt-6">
-                <button id="close-premium-modal" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                <button id="confirm-payment-button" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg">Confirmar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Administrador -->
-    <div id="admin-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-gray-800 p-8 rounded-2xl shadow-lg max-w-lg w-full text-white border border-gray-700">
-            <h2 class="text-2xl font-bold mb-4">Panel de Administrador</h2>
-            <div class="space-y-4">
-                <div>
-                    <label for="admin-userid-input" class="block text-sm font-medium text-gray-300">ID de Usuario:</label>
-                    <input type="text" id="admin-userid-input" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2">
-                </div>
-                <div>
-                    <label for="admin-credits-input" class="block text-sm font-medium text-gray-300">Créditos a añadir:</label>
-                    <input type="number" id="admin-credits-input" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2">
-                </div>
-            </div>
-            <div class="flex gap-4 mt-6">
-                <button id="close-admin-modal" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                <button id="add-credits-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Añadir Créditos</button>
-            </div>
-        </div>
-    </div>
-
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, deleteDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- DOM ELEMENTS ---
         const loginScreen = document.getElementById('login-screen');
@@ -205,26 +171,19 @@
         const fileUploadInput = document.getElementById('file-upload-input');
         const welcomeModal = document.getElementById('welcome-modal');
         const closeWelcomeModal = document.getElementById('close-welcome-modal');
-        const premiumModal = document.getElementById('premium-modal');
-        const closePremiumModal = document.getElementById('close-premium-modal');
-        const confirmPaymentButton = document.getElementById('confirm-payment-button');
-        const adminPanelButton = document.getElementById('admin-panel-button');
-        const adminModal = document.getElementById('admin-modal');
-        const closeAdminModal = document.getElementById('close-admin-modal');
-        const addCreditsButton = document.getElementById('add-credits-button');
-        const userCreditsSpan = document.getElementById('user-credits');
+        const micButton = document.getElementById('mic-button');
         let activeContextMenu = null;
         
         // --- APP STATE ---
-        let app, auth, db, userId, userProfile;
+        let app, auth, db, userId;
         let unsubscribeConversations = null;
-        let unsubscribeUserProfile = null;
         let currentConversationId = null;
         let chatContext = [];
+        let isListening = false;
+        let recognition;
         
         const API_KEY = "AIzaSyB1xjT_S_pPECCQZ50VDDb3vRbQBa_EHpk";
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-jenny-app';
-        const ADMIN_UID = "YOUR_ADMIN_UID_HERE"; // Reemplaza con tu UID de Firebase
 
         // --- CONFIGURACIÓN DE FIREBASE (INTEGRADA) ---
         const firebaseConfig = {
@@ -246,29 +205,26 @@
 
                 onAuthStateChanged(auth, user => {
                     if (user) {
+                        const isNewUser = user.metadata.creationTime === user.metadata.lastSignInTime;
+                        if (isNewUser && !localStorage.getItem('hasSeenWelcome')) {
+                            welcomeModal.classList.remove('hidden');
+                            localStorage.setItem('hasSeenWelcome', 'true');
+                        }
+
                         userId = user.uid;
                         userName.textContent = user.displayName;
                         userPhoto.src = user.photoURL;
                         loginScreen.classList.add('hidden');
                         appScreen.classList.remove('hidden');
                         appScreen.classList.add('flex');
-                        
-                        setupUserProfile(user);
                         startNewChat();
                         loadConversationList();
-
-                        if (user.uid === ADMIN_UID) {
-                            adminPanelButton.classList.remove('hidden');
-                        }
-
                     } else {
                         userId = null;
-                        userProfile = null;
                         loginScreen.classList.remove('hidden');
                         appScreen.classList.add('hidden');
                         appScreen.classList.remove('flex');
                         if (unsubscribeConversations) unsubscribeConversations();
-                        if (unsubscribeUserProfile) unsubscribeUserProfile();
                     }
                 });
             } catch (error) {
@@ -305,25 +261,6 @@
         }
 
         // --- FIRESTORE & CHAT LOGIC ---
-        function setupUserProfile(user) {
-            if (unsubscribeUserProfile) unsubscribeUserProfile();
-            const userDocRef = doc(db, `artifacts/${appId}/users/${userId}`);
-            
-            onSnapshot(userDocRef, (doc) => {
-                if (doc.exists()) {
-                    userProfile = doc.data();
-                    userCreditsSpan.textContent = `Créditos: ${userProfile.credits || 0}`;
-                } else {
-                    // Crear perfil si no existe
-                    setDoc(userDocRef, {
-                        displayName: user.displayName,
-                        email: user.email,
-                        credits: 5 // Créditos iniciales para nuevos usuarios
-                    });
-                }
-            });
-        }
-
         function loadConversationList() {
             if (unsubscribeConversations) unsubscribeConversations();
             const convosRef = collection(db, `artifacts/${appId}/users/${userId}/conversations`);
