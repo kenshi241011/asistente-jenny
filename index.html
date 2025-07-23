@@ -6,9 +6,11 @@
     <title>Asistente IA: Jenny</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Librerías para leer archivos .docx y .xlsx -->
+    <!-- Librerías para leer y crear archivos -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/docx@8.2.2/build/index.js"></script>
+
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #111827; }
         #chat-history, #history-list { scroll-behavior: smooth; }
@@ -39,14 +41,6 @@
         .context-menu button { display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.6rem 1rem; text-align: left; color: #e5e7eb; font-size: 0.875rem; background: none; border: none; cursor: pointer; transition: background-color 0.1s ease-in-out; }
         .context-menu button:hover { background-color: #4a5568; }
         .context-menu button svg { color: #9ca3af; }
-        
-        /* Animación para el botón de micrófono */
-        .mic-listening { animation: pulse 1.5s infinite; }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
     </style>
 </head>
 <body class="bg-gray-900">
@@ -109,9 +103,6 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                         <input type="file" id="file-upload-input" class="hidden">
                     </label>
-                    <button id="mic-button" class="p-2 text-gray-400 hover:bg-gray-700 rounded-full transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-                    </button>
                     <input type="text" id="chat-input" placeholder="Escribe una pregunta..." class="flex-grow bg-transparent p-2 focus:outline-none text-white">
                     <button id="send-chat-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold p-2 rounded-full">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
@@ -171,7 +162,6 @@
         const fileUploadInput = document.getElementById('file-upload-input');
         const welcomeModal = document.getElementById('welcome-modal');
         const closeWelcomeModal = document.getElementById('close-welcome-modal');
-        const micButton = document.getElementById('mic-button');
         let activeContextMenu = null;
         
         // --- APP STATE ---
@@ -179,8 +169,6 @@
         let unsubscribeConversations = null;
         let currentConversationId = null;
         let chatContext = [];
-        let isListening = false;
-        let recognition;
         
         const API_KEY = "AIzaSyB1xjT_S_pPECCQZ50VDDb3vRbQBa_EHpk";
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-jenny-app';
