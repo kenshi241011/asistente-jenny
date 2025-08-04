@@ -4,46 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asistente IA: Jenny</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Librerías para leer archivos .docx y .xlsx -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #111827; }
-        #chat-history, #history-list { scroll-behavior: smooth; }
-        
-        /* Estilos para el contenido Markdown renderizado */
-        .prose h1, .prose h2, .prose h3 { margin-top: 1em; margin-bottom: 0.5em; font-weight: 600; color: #f9fafb;}
-        .prose p { margin-bottom: 0.75em; line-height: 1.6; color: #d1d5db; }
-        .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; color: #d1d5db;}
-        .prose pre { background-color: #0d1117; color: #c9d1d9; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1em; border: 1px solid #30363d;}
-        .prose code { font-family: 'SF Mono', 'Courier New', Courier, monospace; }
-        .prose :not(pre) > code { background-color: #374151; color: #e5e7eb; padding: 0.125rem 0.25rem; border-radius: 0.25rem; }
-
-        /* Animación de Carga estilo Gemini */
-        .gemini-loader { width: 28px; height: 28px; position: relative; animation: rotate 2s linear infinite; }
-        .gemini-loader .sparkle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 12px; height: 12px; background: #818cf8; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
-        .gemini-loader .arc { position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 3px solid transparent; border-top-color: #fbbf24; border-right-color: #fb7185; transform: rotate(45deg); }
-        @keyframes rotate { 100% { transform: rotate(360deg); } }
-
-        /* Estilos del Historial */
-        .history-item { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; margin-bottom: 0.25rem; border-radius: 0.5rem; cursor: pointer; transition: background-color 0.15s ease-in-out; color: #d1d5db; font-size: 0.875rem; line-height: 1.25rem; position: relative; }
-        .history-item:hover { background-color: #374151; color: #e5e7eb; }
-        .history-item.active { background-color: #3b82f6; color: white; font-weight: 500; }
-        .history-item-title { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .history-item-menu-btn { background: none; border: none; padding: 0.25rem; border-radius: 0.25rem; color: #9ca3af; cursor: pointer; visibility: hidden; opacity: 0; transition: all 0.15s ease-in-out; flex-shrink: 0; }
-        .history-item:hover .history-item-menu-btn, .history-item.active .history-item-menu-btn { visibility: visible; opacity: 1; }
-        .history-item-menu-btn:hover { background-color: rgba(255, 255, 255, 0.2); }
-        .context-menu { position: absolute; background-color: #2d3748; border-radius: 0.5rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); z-index: 50; min-width: 150px; display: none; padding: 0.5rem 0; right: 0.5rem; top: 50%; transform: translateY(-50%); }
-        .context-menu button { display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.6rem 1rem; text-align: left; color: #e5e7eb; font-size: 0.875rem; background: none; border: none; cursor: pointer; transition: background-color 0.1s ease-in-out; }
-        .context-menu button:hover { background-color: #4a5568; }
-        .context-menu button svg { color: #9ca3af; }
-    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.47.1/docxtemplater.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.7/pizzip.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-gray-900">
 
-    <!-- Pantalla de Inicio de Sesión -->
     <div id="login-screen" class="w-full h-screen flex items-center justify-center p-4 bg-gray-900">
         <div class="text-center max-w-md w-full bg-gray-800/50 backdrop-blur-xl p-8 rounded-2xl shadow-lg border border-gray-700">
              <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center mb-6 mx-auto">
@@ -52,18 +26,17 @@
             <h1 class="text-4xl font-bold mb-2 text-white">Bienvenido a Jenny</h1>
             <p class="text-gray-400 mb-8">Tu asistente personal con historial de chat.</p>
             <button id="login-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2 mx-auto w-full justify-center disabled:opacity-75 disabled:cursor-wait">
-                <svg class="w-5 h-5" viewBox="0 0 48 48"><!-- Google Icon --></svg>
+                <svg class="w-5 h-5" viewBox="0 0 48 48"></svg>
                 <span id="login-button-text">Iniciar Sesión con Google</span>
             </button>
             <p id="login-error" class="text-red-500 mt-4"></p>
         </div>
     </div>
 
-    <!-- Pantalla de la Aplicación -->
     <div id="app-screen" class="w-full h-screen flex hidden relative">
         <div id="sidebar-backdrop" class="fixed inset-0 bg-black/50 z-30 hidden sm:hidden"></div>
 
-        <div id="history-sidebar" class="fixed sm:relative inset-y-0 left-0 bg-gray-800 w-64 p-4 flex flex-col border-r border-gray-700 z-40 transform -translate-x-full sm:translate-x-0 transition-transform duration-300 ease-in-out">
+        <div id="history-sidebar" class="fixed sm:relative inset-y-0 left-0 w-64 p-4 flex flex-col z-40 transform -translate-x-full sm:translate-x-0 transition-transform duration-300 ease-in-out">
             <button id="new-chat-button" class="w-full text-left p-2 mb-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                 + Nuevo Chat
             </button>
@@ -71,7 +44,7 @@
             <div id="history-list" class="flex-grow overflow-y-auto"></div>
         </div>
 
-        <div class="flex-1 flex flex-col bg-gray-900">
+        <div class="flex-1 flex flex-col">
             <header class="p-4 border-b border-gray-700 flex justify-between items-center">
                  <button id="menu-toggle" class="sm:hidden p-2 text-gray-400">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
@@ -84,7 +57,7 @@
                  </div>
             </header>
 
-            <div class="flex-grow p-4 sm:p-6 overflow-y-auto" id="chat-container">
+            <main class="flex-grow p-4 sm:p-6 overflow-y-auto" id="chat-container">
                 <div id="welcome-screen" class="flex flex-col items-center justify-center h-full text-center">
                     <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center mb-4">
                         <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.75L13.2625 8.2375L18.75 9.5L13.2625 10.7625L12 16.25L10.7375 10.7625L5.25 9.5L10.7375 8.2375L12 2.75Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -92,9 +65,9 @@
                     <h2 class="text-3xl font-bold text-white">¿Cómo puedo ayudarte hoy?</h2>
                 </div>
                 <div id="chat-history" class="space-y-6"></div>
-            </div>
+            </main>
 
-            <div class="p-4 sm:p-6 bg-transparent">
+            <footer class="p-4 sm:p-6 bg-transparent">
                  <div id="status-indicator" class="text-gray-400 text-sm h-5 mb-2 text-center"></div>
                  <div class="flex items-center gap-2 bg-gray-800 rounded-2xl p-2 relative">
                     <label class="p-2 text-gray-400 hover:bg-gray-700 rounded-full transition-colors cursor-pointer">
@@ -102,15 +75,17 @@
                         <input type="file" id="file-upload-input" class="hidden">
                     </label>
                     <input type="text" id="chat-input" placeholder="Escribe una pregunta..." class="flex-grow bg-transparent p-2 focus:outline-none text-white">
+                    <button id="open-canvas-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold p-2 rounded-full" title="Abrir Canvas">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                    </button>
                     <button id="send-chat-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold p-2 rounded-full">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                     </button>
                 </div>
-            </div>
+            </footer>
         </div>
     </div>
     
-    <!-- Modal de Bienvenida -->
     <div id="welcome-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-gray-800 p-8 rounded-2xl shadow-lg max-w-lg w-full text-white border border-gray-700">
             <h2 class="text-2xl font-bold mb-4">¡Bienvenido a Jenny!</h2>
@@ -131,462 +106,17 @@
         </div>
     </div>
 
+    <div id="canvas-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-gray-900 rounded-2xl shadow-lg border border-gray-700 p-4 relative flex flex-col items-center max-w-3xl w-full">
+            <button id="close-canvas-btn" class="absolute top-3 right-3 text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-full p-2" title="Cerrar Canvas">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <h3 class="text-lg font-semibold text-white mb-2">Visualizador Canvas</h3>
+            <canvas id="draw-canvas" width="600" height="400" class="bg-gray-100 rounded-xl border border-gray-600 shadow-xl mb-2"></canvas>
+            <span class="text-gray-400 text-xs mb-1">Puedes visualizar dibujos, gráficos o simulaciones aquí.</span>
+        </div>
+    </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- DOM ELEMENTS ---
-        const loginScreen = document.getElementById('login-screen');
-        const appScreen = document.getElementById('app-screen');
-        const loginButton = document.getElementById('login-button');
-        const loginButtonText = document.getElementById('login-button-text');
-        const logoutButton = document.getElementById('logout-button');
-        const userName = document.getElementById('user-name');
-        const userPhoto = document.getElementById('user-photo');
-        const loginError = document.getElementById('login-error');
-        const chatContainer = document.getElementById('chat-container');
-        const welcomeScreen = document.getElementById('welcome-screen');
-        const chatHistory = document.getElementById('chat-history');
-        const chatInput = document.getElementById('chat-input');
-        const sendChatButton = document.getElementById('send-chat-button');
-        const statusIndicator = document.getElementById('status-indicator');
-        const historySidebar = document.getElementById('history-sidebar');
-        const historyList = document.getElementById('history-list');
-        const newChatButton = document.getElementById('new-chat-button');
-        const menuToggle = document.getElementById('menu-toggle');
-        const sidebarBackdrop = document.getElementById('sidebar-backdrop');
-        const fileUploadInput = document.getElementById('file-upload-input');
-        const welcomeModal = document.getElementById('welcome-modal');
-        const closeWelcomeModal = document.getElementById('close-welcome-modal');
-        let activeContextMenu = null;
-        
-        // --- APP STATE ---
-        let app, auth, db, userId;
-        let unsubscribeConversations = null;
-        let currentConversationId = null;
-        let chatContext = [];
-        
-        const API_KEY = "AIzaSyB1xjT_S_pPECCQZ50VDDb3vRbQBa_EHpk";
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-jenny-app';
-
-        // --- CONFIGURACIÓN DE FIREBASE (INTEGRADA) ---
-        const firebaseConfig = {
-          apiKey: "AIzaSyDaJJmIvNkBHd7Qrs4cnD6IosMINJ-mC0k",
-          authDomain: "asistentejenny-e78fc.firebaseapp.com",
-          projectId: "asistentejenny-e78fc",
-          storageBucket: "asistentejenny-e78fc.firebasestorage.app",
-          messagingSenderId: "184985001818",
-          appId: "1:184985001818:web:dce0a369789eafd9ff5d63",
-          measurementId: "G-CC5305PLF1"
-        };
-
-        // --- AUTH LOGIC ---
-        function initializeFirebase() {
-            try {
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-
-                onAuthStateChanged(auth, user => {
-                    if (user) {
-                        const isNewUser = user.metadata.creationTime === user.metadata.lastSignInTime;
-                        if (isNewUser && !localStorage.getItem('hasSeenWelcome')) {
-                            welcomeModal.classList.remove('hidden');
-                            localStorage.setItem('hasSeenWelcome', 'true');
-                        }
-
-                        userId = user.uid;
-                        userName.textContent = user.displayName;
-                        userPhoto.src = user.photoURL;
-                        loginScreen.classList.add('hidden');
-                        appScreen.classList.remove('hidden');
-                        appScreen.classList.add('flex');
-                        startNewChat();
-                        loadConversationList();
-                    } else {
-                        userId = null;
-                        loginScreen.classList.remove('hidden');
-                        appScreen.classList.add('hidden');
-                        appScreen.classList.remove('flex');
-                        if (unsubscribeConversations) unsubscribeConversations();
-                    }
-                });
-            } catch (error) {
-                console.error("Error al inicializar Firebase:", error);
-                loginError.textContent = "Error crítico al inicializar Firebase.";
-                loginButton.disabled = true;
-            }
-        }
-        
-        async function signInWithGoogle() {
-            if (!auth) {
-                loginError.textContent = "Firebase no está listo. Intenta de nuevo en un momento.";
-                return;
-            }
-            loginButton.disabled = true;
-            loginButtonText.textContent = "Conectando...";
-            loginError.textContent = "";
-
-            const provider = new GoogleAuthProvider();
-            try {
-                await setPersistence(auth, browserLocalPersistence);
-                await signInWithPopup(auth, provider);
-            } catch (error) {
-                console.error("Error al iniciar sesión con Google:", error);
-                if (error.code === 'auth/unauthorized-domain') {
-                    loginError.textContent = "Dominio no autorizado. Revisa la configuración de Firebase.";
-                } else {
-                    loginError.textContent = "Error al iniciar sesión. Inténtalo de nuevo.";
-                }
-            } finally {
-                loginButton.disabled = false;
-                loginButtonText.textContent = "Iniciar Sesión con Google";
-            }
-        }
-
-        // --- FIRESTORE & CHAT LOGIC ---
-        function loadConversationList() {
-            if (unsubscribeConversations) unsubscribeConversations();
-            const convosRef = collection(db, `artifacts/${appId}/users/${userId}/conversations`);
-            const q = query(convosRef, orderBy('timestamp', 'desc'));
-
-            unsubscribeConversations = onSnapshot(q, (snapshot) => {
-                historyList.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const convo = doc.data();
-                    const title = convo.title || 'Nuevo Chat';
-                    const li = document.createElement('li');
-                    li.className = 'history-item';
-                    li.dataset.id = doc.id;
-
-                    const titleSpan = document.createElement('span');
-                    titleSpan.className = 'history-item-title';
-                    titleSpan.textContent = title;
-                    li.appendChild(titleSpan);
-
-                    const menuBtn = document.createElement('button');
-                    menuBtn.className = 'history-item-menu-btn';
-                    menuBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>`;
-                    li.appendChild(menuBtn);
-
-                    const contextMenu = document.createElement('div');
-                    contextMenu.className = 'context-menu';
-                    contextMenu.innerHTML = `
-                        <button data-action="rename">Cambiar nombre</button>
-                        <button data-action="delete">Eliminar</button>
-                    `;
-                    li.appendChild(contextMenu);
-
-                    menuBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        if (activeContextMenu && activeContextMenu !== contextMenu) {
-                            activeContextMenu.style.display = 'none';
-                        }
-                        contextMenu.style.display = contextMenu.style.display === 'block' ? 'none' : 'block';
-                        activeContextMenu = contextMenu.style.display === 'block' ? contextMenu : null;
-                    });
-
-                    contextMenu.querySelectorAll('button').forEach(btn => {
-                        btn.addEventListener('click', async (e) => {
-                            e.stopPropagation();
-                            const action = btn.dataset.action;
-                            const convoId = li.dataset.id;
-                            contextMenu.style.display = 'none';
-                            activeContextMenu = null;
-
-                            if (action === 'delete') {
-                                if (confirm('¿Seguro que quieres eliminar este chat?')) {
-                                    const convoDocRef = doc(db, `artifacts/${appId}/users/${userId}/conversations/${convoId}`);
-                                    await deleteDoc(convoDocRef);
-                                    if (currentConversationId === convoId) {
-                                        startNewChat();
-                                    }
-                                }
-                            } else if (action === 'rename') {
-                                const newTitle = prompt('Nuevo nombre para el chat:', title);
-                                if (newTitle && newTitle.trim() !== '') {
-                                    const convoDocRef = doc(db, `artifacts/${appId}/users/${userId}/conversations/${convoId}`);
-                                    await setDoc(convoDocRef, { title: newTitle.trim() }, { merge: true });
-                                }
-                            }
-                        });
-                    });
-
-                    li.onclick = () => {
-                        if (activeContextMenu) {
-                            activeContextMenu.style.display = 'none';
-                            activeContextMenu = null;
-                        }
-                        document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
-                        li.classList.add('active');
-                        loadConversation(doc.id);
-                        historySidebar.classList.add('-translate-x-full');
-                        sidebarBackdrop.classList.add('hidden');
-                    };
-                    historyList.appendChild(li);
-
-                    if (doc.id === currentConversationId) {
-                        li.classList.add('active');
-                    }
-                });
-            });
-        }
-
-        function loadConversation(convoId) {
-            currentConversationId = convoId;
-            document.querySelectorAll('.history-item').forEach(item => {
-                item.classList.toggle('active', item.dataset.id === convoId);
-            });
-            const convoDocRef = doc(db, `artifacts/${appId}/users/${userId}/conversations/${convoId}`);
-            
-            onSnapshot(convoDocRef, (doc) => {
-                chatHistory.innerHTML = '';
-                if (doc.exists()) {
-                    chatContext = doc.data().messages || [];
-                    if (chatContext.length > 0) {
-                        welcomeScreen.classList.add('hidden');
-                        chatContext.forEach(msg => appendMessage(msg.parts[0].text, msg.role, msg.isImage || false, false));
-                    } else {
-                        welcomeScreen.classList.remove('hidden');
-                    }
-                }
-            });
-        }
-
-        function startNewChat() {
-            currentConversationId = null;
-            chatContext = [];
-            chatHistory.innerHTML = '';
-            welcomeScreen.classList.remove('hidden');
-            document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
-        }
-
-        async function handleChat(promptOverride = null, isFileContext = false) {
-            const userPrompt = promptOverride || chatInput.value.trim();
-            if (!userPrompt) return;
-
-            setChatUIState(true);
-            if (!isFileContext) {
-                appendMessage(userPrompt, 'user');
-            }
-            const aiMessageBubble = appendMessage('', 'model', false, false);
-            chatInput.value = '';
-
-            try {
-                const isNewChat = !currentConversationId;
-                if (isNewChat) {
-                    const convosRef = collection(db, `artifacts/${appId}/users/${userId}/conversations`);
-                    const newConvoDoc = await addDoc(convosRef, {
-                        title: userPrompt.substring(0, 30),
-                        timestamp: serverTimestamp(),
-                        messages: []
-                    });
-                    currentConversationId = newConvoDoc.id;
-                }
-                
-                const currentTurn = { role: "user", parts: [{ text: userPrompt }] };
-                const tempContext = chatContext.map(({role, parts}) => ({role, parts}));
-                tempContext.push(currentTurn);
-                
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${API_KEY}`;
-                const payload = { contents: tempContext };
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-
-                if (!response.ok) throw new Error((await response.json()).error.message);
-                
-                const result = await response.json();
-                const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                if (aiResponse) {
-                    updateMessage(aiMessageBubble, aiResponse, 'model');
-                } else {
-                    updateMessage(aiMessageBubble, "No se recibió una respuesta válida.", 'model');
-                }
-
-            } catch (error) {
-                updateMessage(aiMessageBubble, `Lo siento, ocurrió un error: ${error.message}`, 'model');
-            } finally {
-                setChatUIState(false);
-            }
-        }
-        
-        function parseMarkdown(text) {
-            const lines = text.split('\n');
-            let html = '';
-            let inCodeBlock = false;
-            let inList = false;
-
-            const inline = (t) => t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/`([^`]+)`/g, '<code>$1</code>');
-
-            for (const line of lines) {
-                if (line.startsWith('```')) {
-                    if (inCodeBlock) {
-                        html += `</code></pre>`;
-                        inCodeBlock = false;
-                    } else {
-                        if (inList) { html += '</ul>'; inList = false; }
-                        inCodeBlock = true;
-                        html += `<pre><code>`;
-                    }
-                    continue;
-                }
-                if (inCodeBlock) {
-                    html += line.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '\n';
-                    continue;
-                }
-                if (!line.startsWith('* ') && inList) {
-                    html += '</ul>';
-                    inList = false;
-                }
-                if (line.startsWith('* ')) {
-                    if (!inList) { html += '<ul>'; inList = true; }
-                    html += `<li>${inline(line.substring(2))}</li>`;
-                }
-                else if (line.startsWith('## ')) { html += `<h2>${inline(line.substring(3))}</h2>`; }
-                else if (line.startsWith('# ')) { html += `<h1>${inline(line.substring(2))}</h1>`; }
-                else if (line.trim() !== '') { html += `<p>${inline(line)}</p>`; }
-            }
-            if (inList) html += '</ul>';
-            if (inCodeBlock) html += '</code></pre>';
-            return html;
-        }
-
-        function appendMessage(text, role, isImage = false, shouldSave = true) {
-            welcomeScreen.classList.add('hidden');
-            const messageWrapper = document.createElement('div');
-            messageWrapper.className = `flex items-start gap-3 ${role === 'user' ? 'justify-end' : 'justify-start'}`;
-            
-            const messageBubble = document.createElement('div');
-            
-            if(role === 'model') { 
-                const avatar = document.createElement('div');
-                avatar.className = 'w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0';
-                avatar.innerHTML = `<svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.75L13.2625 8.2375L18.75 9.5L13.2625 10.7625L12 16.25L10.7375 10.7625L5.25 9.5L10.7375 8.2375L12 2.75Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-                messageWrapper.appendChild(avatar);
-            }
-            
-            messageBubble.className = `prose max-w-lg ${role === 'user' ? 'bg-gray-700 text-white p-3 rounded-xl' : 'bg-gray-800'}`;
-            
-            if (isImage) {
-                const img = document.createElement('img');
-                img.src = text;
-                img.className = 'rounded-md max-w-xs';
-                messageBubble.appendChild(img);
-                messageBubble.classList.add('p-1');
-            } else if (role === 'model' && !text) {
-                messageBubble.innerHTML = `<div class="gemini-loader"><div class="arc"></div><div class="sparkle"></div></div>`;
-            } else {
-                 messageBubble.innerHTML = (role === 'model') ? parseMarkdown(text) : text;
-            }
-            
-            messageWrapper.appendChild(messageBubble);
-            chatHistory.appendChild(messageWrapper);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-
-            if (shouldSave) {
-                chatContext.push({ role, parts: [{ text }], isImage });
-                if (currentConversationId) {
-                    const convoDocRef = doc(db, `artifacts/${appId}/users/${userId}/conversations/${currentConversationId}`);
-                    setDoc(convoDocRef, { messages: chatContext }, { merge: true });
-                }
-            }
-            return messageBubble;
-        }
-
-        function updateMessage(bubble, text, role, isImage = false) {
-             setTimeout(() => {
-                if (isImage) {
-                    const img = document.createElement('img');
-                    img.src = text;
-                    img.className = 'rounded-md max-w-xs';
-                    bubble.innerHTML = '';
-                    bubble.appendChild(img);
-                    bubble.classList.add('p-1');
-                } else {
-                    bubble.innerHTML = parseMarkdown(text);
-                }
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-                
-                chatContext.push({ role, parts: [{ text }], isImage });
-                if (currentConversationId) {
-                    const convoDocRef = doc(db, `artifacts/${appId}/users/${userId}/conversations/${currentConversationId}`);
-                    setDoc(convoDocRef, { messages: chatContext }, { merge: true });
-                }
-            }, 800);
-        }
-
-        function setChatUIState(isLoading) {
-            chatInput.disabled = isLoading;
-            sendChatButton.disabled = isLoading;
-            statusIndicator.textContent = isLoading ? 'Procesando...' : '';
-        }
-
-        // --- LÓGICA DE MANEJO DE ARCHIVOS ---
-        async function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            appendMessage(`Archivo subido: <strong>${file.name}</strong>`, 'user');
-            
-            try {
-                let fileContent = "";
-                const extension = file.name.split('.').pop().toLowerCase();
-
-                if (extension === 'docx') {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const result = await mammoth.extractRawText({ arrayBuffer });
-                    fileContent = result.value;
-                } else if (extension === 'xlsx') {
-                    const data = await file.arrayBuffer();
-                    const workbook = XLSX.read(data);
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
-                    fileContent = XLSX.utils.sheet_to_csv(worksheet);
-                } else if (['txt', 'js', 'py', 'html', 'css', 'json', 'md'].includes(extension)) {
-                    fileContent = await file.text();
-                } else {
-                    appendMessage(`Lo siento, no puedo leer el contenido de archivos .${extension}.`, 'model');
-                    return;
-                }
-                
-                const prompt = `Analiza el siguiente contenido del archivo "${file.name}" y dame un resumen o los puntos clave:\n\n---\n\n${fileContent}`;
-                await handleChat(prompt, true);
-
-            } catch (error) {
-                console.error("Error procesando el archivo:", error);
-                appendMessage("Hubo un error al procesar el archivo.", 'model');
-            } finally {
-                fileUploadInput.value = '';
-            }
-        }
-
-        // --- EVENT LISTENERS ---
-        loginButton.addEventListener('click', signInWithGoogle);
-        logoutButton.addEventListener('click', () => signOut(auth));
-        newChatButton.addEventListener('click', startNewChat);
-        sendChatButton.addEventListener('click', () => handleChat());
-        chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleChat(); });
-        
-        menuToggle.addEventListener('click', () => {
-            historySidebar.classList.remove('-translate-x-full');
-            sidebarBackdrop.classList.remove('hidden');
-        });
-
-        sidebarBackdrop.addEventListener('click', () => {
-            historySidebar.classList.add('-translate-x-full');
-            sidebarBackdrop.classList.add('hidden');
-        });
-
-        fileUploadInput.addEventListener('change', handleFileUpload);
-        
-        closeWelcomeModal.addEventListener('click', () => {
-            welcomeModal.classList.add('hidden');
-        });
-
-        // --- INICIALIZACIÓN ---
-        initializeFirebase();
-    </script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
