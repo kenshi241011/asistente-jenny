@@ -1,7 +1,23 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+// Añade esta nueva función en cualquier parte de tu script.js
+// (un buen lugar es cerca de las otras funciones de la UI)
 
+/**
+ * Muestra una notificación temporal (toast) en la pantalla.
+ * @param {string} message - El mensaje a mostrar.
+ * @param {number} duration - Cuánto tiempo (en ms) debe ser visible.
+ */
+function showToast(message, duration = 2000) {
+    notificationToast.textContent = message;
+    notificationToast.classList.remove('opacity-0'); // Lo hace visible
+
+    // Configura un temporizador para ocultarlo después de la duración especificada
+    setTimeout(() => {
+        notificationToast.classList.add('opacity-0'); // Lo oculta
+    }, duration);
+}
 
 // --- Constantes y Variables Globales ---
 const API_KEY = "AIzaSyB1xjT_S_pPECCQZ50VDDb3vRbQBa_EHpk"; // Para Gemini
@@ -56,6 +72,7 @@ const closeCanvasBtn = document.getElementById('close-canvas-btn');
 const drawCanvas = document.getElementById('draw-canvas');
 const temporalChatButton = document.getElementById('temporal-chat-button');
 const chatTitle = document.getElementById('chat-title');
+const notificationToast = document.getElementById('notification-toast');
 // =================================================================================
 // INICIO DE LA LÓGICA PARA CREAR ARCHIVOS
 // =================================================================================
@@ -314,6 +331,7 @@ function startTemporaryChat() {
     welcomeScreen.classList.remove('hidden');
     document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
     chatTitle.textContent = 'Chat Temporal';
+    showToast('Iniciando chat temporal...');
     // Opcional: Oculta la barra lateral en móvil al iniciar chat
     historySidebar.classList.add('-translate-x-full');
     sidebarBackdrop.classList.add('hidden');
