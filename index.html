@@ -41,13 +41,25 @@
             <button id="new-chat-button" class="w-full text-left p-2 mb-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                 + Nuevo Chat
             </button>
-            <h2 class="text-sm font-semibold text-gray-400 mb-2 px-2">Historial</h2>
-            <div id="history-list" class="flex-grow overflow-y-auto"></div>
-        </div>
+            <button id="temporal-chat-button" class="w-full text-left p-2 mb-2 bg-gray-700/60 text-gray-300 rounded-lg hover:bg-gray-700 flex items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="stroke-current">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke-dasharray="2 2"></path>
+        </svg>
+        <span>Chat temporal</span>
+        </button>
+         <h2 class="text-sm font-semibold text-gray-400 mb-2 px-2">Historial</h2>
+         <div id="history-list" class="flex-grow overflow-y-auto"></div>
+         </div>
+           
+        
+        
 
         <div class="flex-1 flex flex-col">
             <header class="p-4 border-b border-gray-700 flex justify-between items-center">
                  <button id="menu-toggle" class="sm:hidden p-2 text-gray-400">
+                    <h1 id="chat-title" class="text-xl font-semibold text-white">Jelo</h1>
+     <div id="user-profile" class="flex items-center gap-3">
+         </div>
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
                  </button>
                  <h1 class="text-xl font-semibold text-white">Jelo</h1>
@@ -56,6 +68,7 @@
                      <img id="user-photo" class="w-8 h-8 rounded-full" alt="Foto de perfil">
                      <button id="logout-button" class="text-sm text-gray-400 hover:underline hidden sm:inline">Salir</button>
                  </div>
+                 
             </header>
 
             <main class="flex-grow p-4 sm:p-6 overflow-y-auto" id="chat-container">

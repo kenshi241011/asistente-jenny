@@ -15,7 +15,7 @@ let unsubscribeConversations = null;
 let currentConversationId = null;
 let chatContext = [];
 let activeContextMenu = null;
-
+let isTemporaryChat = false;
 // --- Configuración de Firebase ---
 const firebaseConfig = {
     apiKey: "AIzaSyDaJJmIvNkBHd7Qrs4cnD6IosMINJ-mC0k",
@@ -54,7 +54,8 @@ const openCanvasBtn = document.getElementById('open-canvas-btn');
 const canvasModal = document.getElementById('canvas-modal');
 const closeCanvasBtn = document.getElementById('close-canvas-btn');
 const drawCanvas = document.getElementById('draw-canvas');
-
+const temporalChatButton = document.getElementById('temporal-chat-button');
+const chatTitle = document.getElementById('chat-title');
 // =================================================================================
 // INICIO DE LA LÓGICA PARA CREAR ARCHIVOS
 // =================================================================================
@@ -272,6 +273,7 @@ async function handleContextMenuAction(e, action, convoId, currentTitle) {
 }
 
 function loadConversation(convoId) {
+    isTemporaryChat = false;
     currentConversationId = convoId;
     document.querySelectorAll('.history-item').forEach(item => {
         item.classList.toggle('active', item.dataset.id === convoId);
@@ -280,6 +282,9 @@ function loadConversation(convoId) {
     onSnapshot(convoDocRef, (doc) => {
         chatHistory.innerHTML = '';
         if (doc.exists()) {
+            const convoData = doc.data();
+            chatTitle.textContent = convoData.title || 'Jelo'; // Actualiza el título
+            chatContext = convoData.messages || [];
             chatContext = doc.data().messages || [];
             if (chatContext.length > 0) {
                 welcomeScreen.classList.add('hidden');
@@ -291,12 +296,28 @@ function loadConversation(convoId) {
     });
 }
 
+
 function startNewChat() {
+    isTemporaryChat = false;
     currentConversationId = null;
     chatContext = [];
     chatHistory.innerHTML = '';
     welcomeScreen.classList.remove('hidden');
     document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
+    chatTitle.textContent = 'Jelo';
+}
+function startTemporaryChat() {
+    isTemporaryChat = true;
+    currentConversationId = null;
+    chatContext = [];
+    chatHistory.innerHTML = '';
+    welcomeScreen.classList.remove('hidden');
+    document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
+    chatTitle.textContent = 'Chat Temporal';
+    // Opcional: Oculta la barra lateral en móvil al iniciar chat
+    historySidebar.classList.add('-translate-x-full');
+    sidebarBackdrop.classList.add('hidden');
+
 }
 
 async function handleChat(promptOverride = null, isFileContext = false) {
@@ -309,7 +330,7 @@ async function handleChat(promptOverride = null, isFileContext = false) {
     const aiMessageBubble = appendMessage('', 'model', false, false);
     chatInput.value = '';
     try {
-        if (!currentConversationId) {
+        if (!currentConversationId && !isTemporaryChat){
             const convosRef = collection(db, `artifacts/${appId}/users/${userId}/conversations`);
             const newConvoDoc = await addDoc(convosRef, {
                 title: userPrompt.substring(0, 30),
@@ -597,6 +618,7 @@ window.dibujaCirculoEnCanvas = function(x, y, r, color="#ef4444") {
 
 // --- Event Listeners ---
 loginButton.addEventListener('click', signInWithGoogle);
+temporalChatButton.addEventListener('click', startTemporaryChat);
 logoutButton.addEventListener('click', () => signOut(auth));
 newChatButton.addEventListener('click', startNewChat);
 sendChatButton.addEventListener('click', () => handleChat());
